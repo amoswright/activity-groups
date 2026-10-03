@@ -1,0 +1,1102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Activity Groups</title>
+<meta name="description" content="Sort students into activity groups from a CSV of their choices. Works offline; data stays on this device.">
+<meta name="theme-color" content="#1C3A4A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Groups">
+<style>
+:root {
+  --bg: #E7ECEF; --surface: #FFFFFF; --sunk: #F2F5F7; --ink: #1A2631; --muted: #586874; --line: #C8D2D9;
+  --brand: #1C3A4A; --brand-ink: #FFFFFF; --focus: #2563EB;
+  --a0: #177E89; --a1: #B9770E; --a2: #6C4AB6; --a3: #B8336A; --a4: #4D7C0F; --a5: #475569;
+  --r1: #2E7D4F; --r2: #7BB08F; --r3: #D69A2D; --r4: #C2412D; --r0: #8A97A1;
+  --t-excellent: #2E7D4F; --t-good: #5F8F3A; --t-fair: #B9770E; --t-poor: #C2412D; --t-check: #586874;
+  --over: #C2412D;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12191F; --surface: #1C252D; --sunk: #172027; --ink: #E4EBF0; --muted: #9AA9B4; --line: #33414C;
+    --brand: #9CC7D9; --brand-ink: #10202A; --focus: #7AA7FF;
+    --a0: #45B5C0; --a1: #E2A640; --a2: #A48AE6; --a3: #E66E9E; --a4: #8DC43F; --a5: #94A3B8;
+    --r1: #4FB37A; --r2: #3E6B52; --r3: #C99030; --r4: #E0644E; --r0: #5C6A74;
+    --t-excellent: #5CC48A; --t-good: #A3C46A; --t-fair: #E2A640; --t-poor: #EF7C66; --t-check: #9AA9B4;
+    --over: #EF7C66; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12191F; --surface: #1C252D; --sunk: #172027; --ink: #E4EBF0; --muted: #9AA9B4; --line: #33414C;
+  --brand: #9CC7D9; --brand-ink: #10202A; --focus: #7AA7FF;
+  --a0: #45B5C0; --a1: #E2A640; --a2: #A48AE6; --a3: #E66E9E; --a4: #8DC43F; --a5: #94A3B8;
+  --r1: #4FB37A; --r2: #3E6B52; --r3: #C99030; --r4: #E0644E; --r0: #5C6A74;
+  --t-excellent: #5CC48A; --t-good: #A3C46A; --t-fair: #E2A640; --t-poor: #EF7C66; --t-check: #9AA9B4;
+  --over: #EF7C66; color-scheme: dark;
+}
+:root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); -webkit-text-size-adjust: 100%; }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; line-height: 1.2; margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)) 0 max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Header */
+.top { background: var(--brand); color: var(--brand-ink); }
+.top .wrap { display: flex; align-items: center; gap: 16px; min-height: 56px; flex-wrap: wrap; }
+.top h1 { font-size: 21px; letter-spacing: .01em; }
+.steps { display: flex; gap: 4px; margin-left: auto; list-style: none; padding: 0; margin-block: 0; font-size: 13px; }
+.steps li { padding: 4px 10px; border-radius: 99px; opacity: .65; }
+.steps li[aria-current="step"] { opacity: 1; background: color-mix(in srgb, var(--brand-ink) 18%, transparent); font-weight: 600; }
+#installBtn { display: none; }
+
+main.wrap { padding-top: 24px; padding-bottom: 64px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 24px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); padding: 7px 14px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.primary { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); font-weight: 600; }
+.btn.quiet { background: transparent; border-color: transparent; color: var(--muted); }
+.btn.quiet:hover { color: var(--ink); }
+.top .btn { background: transparent; color: var(--brand-ink); border-color: color-mix(in srgb, var(--brand-ink) 40%, transparent); }
+
+/* Upload */
+.upload { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
+.drop { border: 2px dashed var(--line); border-radius: 12px; padding: 48px 24px; text-align: center; background: var(--sunk); cursor: pointer; transition: border-color .15s, background .15s; }
+.drop.hover { border-color: var(--a0); background: color-mix(in srgb, var(--a0) 8%, var(--sunk)); }
+.drop h2 { font-size: 26px; margin-bottom: 8px; }
+.drop p { margin: 0 auto 18px; max-width: 46ch; }
+.example { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0 16px; }
+.example th, .example td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+.example th { background: var(--sunk); font-weight: 600; }
+.note { border-left: 3px solid var(--a0); padding: 2px 0 2px 12px; margin: 16px 0 0; }
+
+/* Mapping */
+.map-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 18px; margin: 18px 0; }
+.field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.field select, .field input[type=number] { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.preview { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; margin: 12px 0; }
+.preview table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.preview th, .preview td { padding: 5px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.preview th { background: var(--sunk); }
+.preview th small { display: block; font-weight: 400; color: var(--a0); }
+.checks { margin: 16px 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.checks li { display: flex; gap: 8px; align-items: baseline; }
+.checks li::before { content: ""; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--t-excellent); transform: translateY(-1px); }
+.checks li.warn::before { background: var(--t-fair); }
+.checks li.bad::before { background: var(--t-poor); }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.chip { padding: 1px 9px; border-radius: 99px; font-size: 13px; color: #fff; }
+
+/* Board view */
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 18px; }
+.toolbar .spacer { flex: 1; }
+.toolbar .group { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.file-name { font-family: var(--serif); font-size: 22px; font-weight: 600; margin-right: 8px; overflow-wrap: anywhere; }
+.banner { border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; border: 1px solid var(--t-poor); background: color-mix(in srgb, var(--t-poor) 9%, var(--surface)); }
+.banner.info { border-color: var(--t-fair); background: color-mix(in srgb, var(--t-fair) 9%, var(--surface)); }
+.banner p { margin: 0; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 0; }
+.tab { border: 1px solid transparent; border-bottom: 0; background: transparent; padding: 9px 18px; border-radius: 8px 8px 0 0; cursor: pointer; font-family: var(--serif); font-size: 17px; color: var(--muted); margin-bottom: -1px; }
+.tab[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--ink); font-weight: 600; }
+.daypanel { background: var(--surface); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 10px 10px; padding: 18px; }
+.summary { display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline; margin-bottom: 16px; }
+.summary strong { font-family: var(--serif); font-size: 20px; }
+.tally { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); margin-left: auto; }
+.legend > span { display: inline-flex; gap: 5px; align-items: center; }
+
+.slot { margin-bottom: 22px; }
+.slot h3 { font-size: 17px; margin-bottom: 8px; display: flex; align-items: baseline; gap: 10px; }
+.slot h3 small { font-family: var(--sans); font-weight: 400; font-size: 13px; color: var(--muted); }
+.lanes { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(210px, 1fr); gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.col { background: var(--sunk); border: 1px solid var(--line); border-radius: 9px; display: flex; flex-direction: column; min-height: 120px; transition: box-shadow .12s, border-color .12s; }
+.col-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 8px 10px 7px; border-top: 4px solid var(--c, var(--a5)); border-radius: 8px 8px 0 0; }
+.col-head b { font-size: 14px; overflow-wrap: anywhere; }
+.count { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+.count.over { color: var(--over); font-weight: 700; }
+.col.over-cap { border-color: var(--over); }
+.cards { list-style: none; margin: 0; padding: 4px 6px 8px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.card { width: 100%; display: flex; align-items: center; gap: 8px; text-align: left; padding: 5px 8px 5px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); cursor: grab; font-size: 14px; line-height: 1.3; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.card:hover { border-color: var(--muted); }
+.card .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.pip { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; }
+.pip.r1 { background: var(--r1); } .pip.r2 { background: var(--r2); color: var(--ink); } .pip.r3 { background: var(--r3); color: #241600; } .pip.r4 { background: var(--r4); } .pip.r0 { background: var(--r0); }
+.card .flag { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--t-poor); }
+.card.peer { border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); }
+.card.lifted { opacity: .35; }
+.is-dragging .col:not(.valid) { opacity: .45; }
+.col.valid { border-style: dashed; }
+.col.drop-over { border: 2px solid var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 25%, transparent); }
+.ghost { position: fixed; z-index: 50; pointer-events: none; transform: rotate(-2deg); box-shadow: 0 8px 24px rgb(0 0 0 / .22); border-color: var(--focus); cursor: grabbing; }
+.empty-col { color: var(--muted); font-size: 13px; padding: 6px 4px; }
+
+/* Results table */
+.results { margin-top: 28px; }
+.results-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+.results-head h2 { font-size: 22px; margin-right: auto; }
+.results-head input, .results-head select { padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table.res { border-collapse: collapse; width: 100%; font-size: 14px; }
+.res th, .res td { padding: 7px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.res th { background: var(--sunk); font-size: 13px; position: sticky; top: 0; white-space: nowrap; }
+.res tr:last-child td { border-bottom: 0; }
+.res td.nowrap { white-space: nowrap; }
+.tier { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.res .notes { color: var(--muted); font-size: 13px; }
+
+/* Dialog */
+dialog { border: 1px solid var(--line); border-radius: 12px; padding: 0; width: min(420px, calc(100vw - 32px)); background: var(--surface); color: var(--ink); }
+dialog::backdrop { background: rgb(10 20 28 / .45); }
+.dlg-body { padding: 20px; }
+.dlg-body h2 { font-size: 20px; margin-bottom: 2px; }
+.dlg-list { display: grid; gap: 6px; margin: 14px 0 4px; }
+.dlg-list button { display: flex; justify-content: space-between; gap: 10px; align-items: center; text-align: left; padding: 9px 12px; border: 1px solid var(--line); border-left: 5px solid var(--c); border-radius: 8px; background: var(--surface); cursor: pointer; }
+.dlg-list button:hover:not(:disabled) { border-color: var(--muted); border-left-color: var(--c); }
+.dlg-list button:disabled { background: var(--sunk); cursor: default; }
+.dlg-list small { color: var(--muted); display: block; font-size: 12px; }
+.dlg-foot { display: flex; justify-content: flex-end; padding: 0 20px 18px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; max-width: calc(100vw - 32px); z-index: 60; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+footer { font-size: 13px; color: var(--muted); padding: 0 0 32px; }
+
+@media (max-width: 760px) {
+  .upload { grid-template-columns: 1fr; }
+  .steps { display: none; }
+  .panel, .daypanel { padding: 14px; }
+  .drop { padding: 32px 16px; }
+  .legend { margin-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media print {
+  .top, .toolbar, .tabs, .results-head input, .results-head select, footer, .legend, .banner { display: none !important; }
+  body { background: #fff; color: #000; }
+  main { padding: 0; }
+  .daypanel { border: 0; padding: 0; }
+  .lanes { grid-auto-flow: row; grid-template-columns: repeat(4, 1fr); overflow: visible; }
+  .slot { break-inside: avoid; }
+  .card { border-color: #999; }
+  .results { break-before: page; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>Activity Groups</h1>
+    <ol class="steps" id="steps" aria-label="Progress">
+      <li data-step="upload">Upload</li><li data-step="map">Check columns</li><li data-step="board">Groups</li>
+    </ol>
+    <button class="btn" id="installBtn" type="button">Install app</button>
+  </div>
+</header>
+<main class="wrap" id="app" aria-live="polite"></main>
+<footer class="wrap">Student data stays in this browser and is never uploaded. It is saved on this device until you choose Start over.</footer>
+
+<dialog id="moveDlg" aria-labelledby="moveTitle">
+  <div class="dlg-body">
+    <h2 id="moveTitle"></h2>
+    <p class="muted small" id="moveSub" style="margin:0"></p>
+    <div class="dlg-list" id="moveList"></div>
+  </div>
+  <div class="dlg-foot"><button class="btn" type="button" id="moveClose">Cancel</button></div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+<input type="file" id="fileInput" accept=".csv,text/csv,.txt" hidden>
+
+<script>
+/* Group Builder core logic. No DOM access here, so it can be tested in Node. */
+const GB = (() => {
+  'use strict';
+
+  // ---------- CSV parsing ----------
+  function detectDelimiter(text) {
+    const firstLine = text.split(/\r?\n/).find(l => l.trim() !== '') || '';
+    const counts = { ',': 0, ';': 0, '\t': 0 };
+    let q = false;
+    for (const c of firstLine) {
+      if (c === '"') q = !q;
+      else if (!q && c in counts) counts[c]++;
+    }
+    let best = ',';
+    for (const d in counts) if (counts[d] > counts[best]) best = d;
+    return best;
+  }
+
+  function parseCSV(text) {
+    text = String(text).replace(/^\uFEFF/, '');
+    const delim = detectDelimiter(text);
+    const rows = [];
+    let row = [], f = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { f += '"'; i++; } else q = false;
+        } else f += c;
+      } else if (c === '"') q = true;
+      else if (c === delim) { row.push(f); f = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(f); rows.push(row); row = []; f = '';
+      } else f += c;
+    }
+    if (f !== '' || row.length) { row.push(f); rows.push(row); }
+    return rows.filter(r => r.some(v => v.trim() !== ''));
+  }
+
+  // ---------- Column mapping ----------
+  const ORD = [
+    ['1', '1st', 'first', 'one', 'top'],
+    ['2', '2nd', 'second', 'two'],
+    ['3', '3rd', 'third', 'three'],
+    ['4', '4th', 'fourth', 'four', 'last'],
+  ];
+  const hasToken = (s, t) => new RegExp('(^|[^a-z0-9])' + t + '(?=[^a-z0-9]|$)').test(s) ||
+    new RegExp('[a-z]' + t + '$').test(s) && /^\d$/.test(t); // "choice1"
+
+  function guessMapping(headerRow) {
+    const h = headerRow.map(x => String(x).toLowerCase().trim());
+    const m = { name: -1, first: -1, last: -1, day: -1, choices: [-1, -1, -1, -1] };
+    let recognized = 0;
+    h.forEach((x, i) => {
+      if (/choice|pref|rank|option|activit|pick|selection/.test(x)) {
+        for (let k = 0; k < 4; k++) {
+          if (m.choices[k] < 0 && ORD[k].some(t => hasToken(x, t))) { m.choices[k] = i; recognized++; return; }
+        }
+        return;
+      }
+      if (m.day < 0 && /(^|[^a-z])(day|date|session)([^a-z]|$)/.test(x)) { m.day = i; recognized++; return; }
+      if (m.first < 0 && /first.?name|given/.test(x)) { m.first = i; recognized++; return; }
+      if (m.last < 0 && /last.?name|surname|family/.test(x)) { m.last = i; recognized++; return; }
+      if (m.name < 0 && /name/.test(x)) { m.name = i; recognized++; return; }
+    });
+    if (m.name < 0 && m.first < 0) {
+      const i = h.findIndex((x, i) => /student|pupil/.test(x) && !/id|number|#|no\.?$/.test(x) && i !== m.day && !m.choices.includes(i));
+      if (i >= 0) { m.name = i; recognized++; }
+    }
+    // If both first and last name columns exist, combine them rather than using a generic "name" column.
+    if (m.first >= 0 && m.last >= 0) m.name = -1;
+    else if (m.name < 0 && m.first >= 0) { m.name = m.first; m.first = -1; }
+    const hasHeader = recognized >= 2;
+    if (!hasHeader) {
+      // Positional default: name, day, choice 1..4
+      return { hasHeader: false, mapping: { name: 0, first: -1, last: -1, day: 1, choices: [2, 3, 4, 5] } };
+    }
+    // Fill any missing choice columns with unused columns that come after the last recognized one.
+    const used = new Set([m.name, m.first, m.last, m.day, ...m.choices].filter(i => i >= 0));
+    for (let k = 0; k < 4; k++) {
+      if (m.choices[k] >= 0) continue;
+      for (let i = 0; i < h.length; i++) if (!used.has(i)) { m.choices[k] = i; used.add(i); break; }
+    }
+    return { hasHeader: true, mapping: m };
+  }
+
+  // ---------- Building the data model ----------
+  const normKey = s => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+  function sortDays(days) {
+    const wd = d => WEEKDAYS.findIndex(w => normKey(d).startsWith(w.slice(0, 3)));
+    if (days.every(d => wd(d) >= 0)) return days.slice().sort((a, b) => wd(a) - wd(b));
+    return days.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  }
+
+  function buildModel(rows, mapping, hasHeader) {
+    const data = hasHeader ? rows.slice(1) : rows.slice();
+    const actByKey = new Map();
+    const dayByKey = new Map();
+    const students = [];
+    const cell = (r, i) => (i >= 0 && i < r.length ? String(r[i]).trim() : '');
+    data.forEach((r, rowIdx) => {
+      let name = mapping.name >= 0 ? cell(r, mapping.name) : [cell(r, mapping.first), cell(r, mapping.last)].filter(Boolean).join(' ');
+      if (mapping.name >= 0 && mapping.last >= 0) name = [name, cell(r, mapping.last)].filter(Boolean).join(' ');
+      const rawChoices = mapping.choices.map(i => cell(r, i));
+      if (!name && rawChoices.every(c => !c)) return; // blank row
+      const warnings = [];
+      if (!name) { name = `Row ${rowIdx + (hasHeader ? 2 : 1)}`; warnings.push('No name in file'); }
+      let dayRaw = cell(r, mapping.day);
+      if (!dayRaw) { dayRaw = 'No day listed'; warnings.push('No day in file'); }
+      const dk = normKey(dayRaw);
+      if (!dayByKey.has(dk)) dayByKey.set(dk, dayRaw);
+      const choiceKeys = [];
+      rawChoices.forEach((c, k) => {
+        if (!c) { warnings.push(`Choice ${k + 1} is blank`); choiceKeys.push(null); return; }
+        const key = normKey(c);
+        if (!actByKey.has(key)) actByKey.set(key, c.trim().replace(/\s+/g, ' '));
+        if (choiceKeys.includes(key)) warnings.push(`"${c}" listed more than once`);
+        choiceKeys.push(key);
+      });
+      students.push({ id: 's' + students.length, name, dayKey: dk, choiceKeys, warnings });
+    });
+    const activityKeys = [...actByKey.keys()].sort((a, b) => actByKey.get(a).localeCompare(actByKey.get(b), undefined, { numeric: true }));
+    const activities = activityKeys.map(k => actByKey.get(k));
+    const dayKeys = sortDays([...dayByKey.keys()].map(k => dayByKey.get(k))).map(normKey);
+    const days = dayKeys.map(k => dayByKey.get(k));
+    for (const s of students) {
+      s.day = dayKeys.indexOf(s.dayKey);
+      // rank[a] = 1-based choice position for activity a, 0 if unranked
+      s.rank = activities.map(() => 0);
+      s.choices = s.choiceKeys.map(k => (k == null ? -1 : activityKeys.indexOf(k)));
+      s.choices.forEach((a, pos) => { if (a >= 0 && s.rank[a] === 0) s.rank[a] = pos + 1; });
+      delete s.choiceKeys; delete s.dayKey;
+    }
+    return { students, activities, days };
+  }
+
+  // ---------- Optimization: min-cost flow ----------
+  // Cost of giving a student their r-th choice (r = 1..K); 0 = unranked.
+  // Chosen so that "badness" of the activity a student misses grows quickly:
+  // missing 4th = 0, missing 3rd = 1, missing 2nd = 3, missing 1st = 7 (for K = 4).
+  function rankCost(r, K) {
+    if (r <= 0 || r > K) return 2 ** K;
+    return 2 ** K - 2 ** (K - r + 1);
+  }
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function minCostFlow(N, edges, s, t) {
+    // edges: [from, to, cap, cost]; returns flows per input edge
+    const g = Array.from({ length: N }, () => []);
+    const E = []; // {to, cap, cost, rev}
+    const idx = [];
+    for (const [u, v, cap, cost] of edges) {
+      idx.push(E.length);
+      g[u].push(E.length); E.push({ to: v, cap, cost });
+      g[v].push(E.length); E.push({ to: u, cap: 0, cost: -cost });
+    }
+    let flow = 0, cost = 0;
+    const dist = new Array(N), inq = new Array(N), prevE = new Array(N);
+    for (;;) {
+      dist.fill(Infinity); inq.fill(false); prevE.fill(-1);
+      dist[s] = 0;
+      const queue = [s]; inq[s] = true;
+      while (queue.length) {
+        const u = queue.shift(); inq[u] = false;
+        for (const ei of g[u]) {
+          const e = E[ei];
+          if (e.cap > 0 && dist[u] + e.cost < dist[e.to]) {
+            dist[e.to] = dist[u] + e.cost; prevE[e.to] = ei;
+            if (!inq[e.to]) { inq[e.to] = true; queue.push(e.to); }
+          }
+        }
+      }
+      if (dist[t] === Infinity) break;
+      let f = Infinity;
+      for (let v = t; v !== s; v = E[prevE[v] ^ 1].to) f = Math.min(f, E[prevE[v]].cap);
+      for (let v = t; v !== s; v = E[prevE[v] ^ 1].to) { E[prevE[v]].cap -= f; E[prevE[v] ^ 1].cap += f; }
+      flow += f; cost += f * dist[t];
+    }
+    return { flow, cost, flows: idx.map(i => E[i ^ 1].cap) };
+  }
+
+  // Decide which activities each student does on their day.
+  function chooseActivities(dayStudents, K, S, cap, seed) {
+    const rnd = mulberry32(seed);
+    const order = dayStudents.map((_, i) => i);
+    for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+    const n = dayStudents.length;
+    const src = 0, sink = n + K + 1;
+    const edges = [], meta = [];
+    for (const i of order) edges.push([src, 1 + i, S, 0]), meta.push(null);
+    for (const i of order) {
+      for (let a = 0; a < K; a++) {
+        edges.push([1 + i, 1 + n + a, 1, rankCost(dayStudents[i].rank[a], K)]);
+        meta.push([i, a]);
+      }
+    }
+    for (let a = 0; a < K; a++) edges.push([1 + n + a, sink, S * cap, 0]), meta.push(null);
+    const res = minCostFlow(n + K + 2, edges, src, sink);
+    const chosen = dayStudents.map(() => []);
+    res.flows.forEach((f, ei) => { if (f > 0 && meta[ei]) chosen[meta[ei][0]].push(meta[ei][1]); });
+    return chosen;
+  }
+
+  // Place each student's activities into time slots so every (slot, activity) group has at most
+  // ceil(total for that activity / S) students. Bipartite edge colouring with S colours.
+  function assignSlots(chosen, K, S) {
+    const n = chosen.length;
+    const edges = []; // [studentVertex, subVertex]
+    const actCount = new Array(K).fill(0);
+    const subOf = [];
+    let nextSub = n;
+    const subStart = new Array(K);
+    // count first so sub-vertices of each activity are contiguous
+    chosen.forEach(list => list.forEach(a => actCount[a]++));
+    for (let a = 0; a < K; a++) { subStart[a] = nextSub; nextSub += Math.ceil(actCount[a] / S); }
+    const seen = new Array(K).fill(0);
+    const edgeAct = [];
+    chosen.forEach((list, i) => list.forEach(a => {
+      const sub = subStart[a] + Math.floor(seen[a] / S); seen[a]++;
+      edges.push([i, sub]); edgeAct.push(a);
+    }));
+    const V = nextSub;
+    const at = Array.from({ length: V }, () => new Array(S).fill(-1));
+    const color = new Array(edges.length).fill(-1);
+    const other = (e, v) => (edges[e][0] === v ? edges[e][1] : edges[e][0]);
+    const free = v => at[v].indexOf(-1);
+    edges.forEach((e, ei) => {
+      const [u, v] = e;
+      const a = free(u), b = free(v);
+      if (at[v][a] !== -1) {
+        // flip the a/b alternating path starting at v
+        const path = [];
+        let cur = v, c = a;
+        while (at[cur][c] !== -1) { const pe = at[cur][c]; path.push(pe); cur = other(pe, cur); c = c === a ? b : a; }
+        for (const pe of path) { const col = color[pe]; at[edges[pe][0]][col] = -1; at[edges[pe][1]][col] = -1; }
+        for (const pe of path) { const nc = color[pe] === a ? b : a; color[pe] = nc; at[edges[pe][0]][nc] = pe; at[edges[pe][1]][nc] = pe; }
+      }
+      color[ei] = a; at[u][a] = ei; at[v][a] = ei;
+    });
+    const schedule = chosen.map(() => new Array(S).fill(-1));
+    edges.forEach((e, ei) => { schedule[e[0]][color[ei]] = edgeAct[ei]; });
+    return schedule;
+  }
+
+  function buildGroups(model, settings, seed = 1) {
+    const { slots: S, cap } = settings;
+    const K = model.activities.length;
+    const problems = [];
+    if (K < S) problems.push(`Only ${K} activities were found, but each student needs ${S}. Check the choice columns.`);
+    model.days.forEach((dayName, d) => {
+      const dayStudents = model.students.filter(s => s.day === d);
+      if (!dayStudents.length) return;
+      if (K < S) { dayStudents.forEach(s => (s.schedule = new Array(S).fill(-1))); return; }
+      const seats = K * cap;
+      if (dayStudents.length > seats) problems.push(`${dayName}: ${dayStudents.length} students, but each time slot only has ${seats} seats (${K} activities × ${cap}). Some students could not be placed.`);
+      const chosen = chooseActivities(dayStudents, K, S, cap, seed + d * 7919);
+      const sched = assignSlots(chosen, K, S);
+      dayStudents.forEach((s, i) => { s.schedule = sched[i]; });
+    });
+    return problems;
+  }
+
+  // ---------- Evaluation ----------
+  const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'));
+
+  function evaluate(student, S) {
+    const got = student.schedule.filter(a => a >= 0);
+    const ranks = got.map(a => student.rank[a]).sort((x, y) => (x || 99) - (y || 99));
+    const received = ranks.map(r => (r ? ordinal(r) : 'unranked'));
+    let tier, label;
+    if (got.length < S) { tier = 'check'; label = `Placed in ${got.length} of ${S}`; }
+    else {
+      // worst outcome = highest-priority choice among the top S that the student did not get
+      const missed = [];
+      for (let r = 1; r <= S; r++) if (!ranks.includes(r)) missed.push(r);
+      const worst = missed.length ? Math.min(...missed) : 0;
+      if (ranks.includes(0)) { tier = 'check'; label = 'Has an unranked activity'; }
+      else if (worst === 0) { tier = 'excellent'; label = 'Excellent'; }
+      else if (worst === S) { tier = 'good'; label = 'Good'; }
+      else if (worst === 1) { tier = 'poor'; label = 'Poor'; }
+      else { tier = 'fair'; label = 'Fair'; }
+      if (missed.length && tier !== 'check') label += ` (missed ${missed.map(ordinal).join(' & ')})`;
+    }
+    return { tier, label, received: received.join(', ') };
+  }
+
+  // Move a student into activity `act` for time slot `slot`. If they already had `act` in another
+  // slot, the two slots swap so nobody does the same activity twice.
+  function moveStudent(student, slot, act) {
+    const sched = student.schedule;
+    const old = sched[slot];
+    if (old === act) return false;
+    const otherSlot = sched.indexOf(act);
+    if (otherSlot >= 0) sched[otherSlot] = old;
+    sched[slot] = act;
+    return true;
+  }
+
+  // ---------- Export ----------
+  function exportRows(model, settings) {
+    const S = settings.slots;
+    const header = ['Student', 'Day', ...Array.from({ length: S }, (_, i) => `Time slot ${i + 1}`),
+      'Choice 1', 'Choice 2', 'Choice 3', 'Choice 4', 'Choices received', 'Result', 'Notes'];
+    const order = model.students.slice().sort((a, b) => a.day - b.day || a.name.localeCompare(b.name));
+    const rows = order.map(s => {
+      const ev = evaluate(s, S);
+      return [s.name, model.days[s.day], ...s.schedule.map(a => (a >= 0 ? model.activities[a] : '')),
+        ...[0, 1, 2, 3].map(k => (s.choices[k] >= 0 ? model.activities[s.choices[k]] : '')),
+        ev.received, ev.label, s.warnings.join('; ')];
+    });
+    return [header, ...rows];
+  }
+
+  function rosterRows(model, settings) {
+    const S = settings.slots;
+    const out = [['Day', 'Time slot', 'Activity', 'Group size', 'Student', 'Choice rank']];
+    model.days.forEach((dayName, d) => {
+      for (let t = 0; t < S; t++) {
+        model.activities.forEach((actName, a) => {
+          const members = model.students.filter(s => s.day === d && s.schedule[t] === a).sort((x, y) => x.name.localeCompare(y.name));
+          members.forEach(s => out.push([dayName, t + 1, actName, members.length, s.name, s.rank[a] ? ordinal(s.rank[a]) : 'unranked']));
+        });
+      }
+    });
+    return out;
+  }
+
+  function toCSV(rows) {
+    const esc = v => {
+      const s = v == null ? '' : String(v);
+      return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    return '\uFEFF' + rows.map(r => r.map(esc).join(',')).join('\r\n') + '\r\n';
+  }
+
+  // ---------- Minimal XLSX writer (stored ZIP, no dependencies) ----------
+  const CRC_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+    return t;
+  })();
+  function crc32(bytes) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  function zipStore(files) {
+    const enc = new TextEncoder();
+    const chunks = [], central = [];
+    let offset = 0;
+    const u16 = (v, a, o) => { a[o] = v & 255; a[o + 1] = (v >>> 8) & 255; };
+    const u32 = (v, a, o) => { a[o] = v & 255; a[o + 1] = (v >>> 8) & 255; a[o + 2] = (v >>> 16) & 255; a[o + 3] = (v >>> 24) & 255; };
+    for (const f of files) {
+      const name = enc.encode(f.name);
+      const data = typeof f.data === 'string' ? enc.encode(f.data) : f.data;
+      const crc = crc32(data);
+      const lh = new Uint8Array(30 + name.length);
+      u32(0x04034b50, lh, 0); u16(20, lh, 4); u16(0x0800, lh, 6); u16(0, lh, 8); u16(0, lh, 10); u16(33, lh, 12);
+      u32(crc, lh, 14); u32(data.length, lh, 18); u32(data.length, lh, 22); u16(name.length, lh, 26); u16(0, lh, 28);
+      lh.set(name, 30);
+      const ch = new Uint8Array(46 + name.length);
+      u32(0x02014b50, ch, 0); u16(20, ch, 4); u16(20, ch, 6); u16(0x0800, ch, 8); u16(0, ch, 10); u16(0, ch, 12); u16(33, ch, 14);
+      u32(crc, ch, 16); u32(data.length, ch, 20); u32(data.length, ch, 24); u16(name.length, ch, 28);
+      u16(0, ch, 30); u16(0, ch, 32); u16(0, ch, 34); u16(0, ch, 36); u32(0, ch, 38); u32(offset, ch, 42);
+      ch.set(name, 46);
+      chunks.push(lh, data); central.push(ch);
+      offset += lh.length + data.length;
+    }
+    const cdSize = central.reduce((s, c) => s + c.length, 0);
+    const end = new Uint8Array(22);
+    u32(0x06054b50, end, 0); u16(0, end, 4); u16(0, end, 6); u16(files.length, end, 8); u16(files.length, end, 10);
+    u32(cdSize, end, 12); u32(offset, end, 16); u16(0, end, 20);
+    const all = [...chunks, ...central, end];
+    const out = new Uint8Array(all.reduce((s, c) => s + c.length, 0));
+    let p = 0; for (const c of all) { out.set(c, p); p += c.length; }
+    return out;
+  }
+
+  const xmlEsc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+  const colName = i => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+
+  function sheetXML(rows) {
+    const widths = [];
+    rows.forEach(r => r.forEach((v, i) => { widths[i] = Math.min(60, Math.max(widths[i] || 8, String(v ?? '').length + 2)); }));
+    const cols = '<cols>' + widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('') + '</cols>';
+    const body = rows.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => {
+      const ref = colName(ci) + (ri + 1);
+      const style = ri === 0 ? ' s="1"' : '';
+      if (typeof v === 'number' && isFinite(v)) return `<c r="${ref}"${style}><v>${v}</v></c>`;
+      return `<c r="${ref}" t="inlineStr"${style}><is><t xml:space="preserve">${xmlEsc(v ?? '')}</t></is></c>`;
+    }).join('') + '</row>').join('');
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
+      cols + `<sheetData>${body}</sheetData></worksheet>`;
+  }
+
+  function toXLSX(sheets) {
+    const files = [
+      { name: '[Content_Types].xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+        sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') + '</Types>' },
+      { name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
+      { name: 'xl/workbook.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+        sheets.map((s, i) => `<sheet name="${xmlEsc(s.name.slice(0, 31))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('') + '</sheets></workbook>' },
+      { name: 'xl/_rels/workbook.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('') +
+        `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` },
+      { name: 'xl/styles.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>' },
+      ...sheets.map((s, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, data: sheetXML(s.rows) })),
+    ];
+    return zipStore(files);
+  }
+
+  return { parseCSV, guessMapping, buildModel, buildGroups, evaluate, moveStudent, exportRows, rosterRows, toCSV, toXLSX, rankCost, ordinal };
+})();
+if (typeof module !== 'undefined') module.exports = GB;
+
+</script>
+<script>
+(() => {
+'use strict';
+const STORE = 'activity-groups:v1';
+const app = document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const actColor = a => `var(--a${a % 6})`;
+const TIERS = { excellent: 'Excellent', good: 'Good', fair: 'Fair', poor: 'Poor', check: 'Check' };
+
+// ---------- state ----------
+const fresh = () => ({ view: 'upload', settings: { slots: 3, cap: 15 }, rows: null, fileName: '', hasHeader: true, mapping: null,
+  model: null, problems: [], seed: 1, undo: [], dayIdx: 0, filter: 'all' });
+let state = load() || fresh();
+let search = '';
+
+function load() {
+  try { const s = localStorage.getItem(STORE); return s ? Object.assign(fresh(), JSON.parse(s)) : null; } catch (e) { return null; }
+}
+let saveWarned = false;
+function save() {
+  try { localStorage.setItem(STORE, JSON.stringify(state)); }
+  catch (e) { if (!saveWarned) { saveWarned = true; toast('This browser is not letting the app save. Download your groups before closing the page.'); } }
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 4200);
+}
+
+// ---------- render ----------
+function render() {
+  document.querySelectorAll('#steps li').forEach(li => {
+    if (li.dataset.step === state.view) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+  });
+  if (state.view === 'map' && state.rows) renderMap();
+  else if (state.view === 'board' && state.model) renderBoard();
+  else { state.view = 'upload'; renderUpload(); }
+}
+
+function renderUpload() {
+  app.innerHTML = `
+  <div class="upload">
+    <div class="drop" id="drop" role="button" tabindex="0" aria-label="Choose a CSV file of student choices">
+      <h2>Drop the class list here</h2>
+      <p class="muted">A CSV file with one row per student: their name, their day, and their four activity choices in order.</p>
+      <button class="btn primary" type="button" id="pickBtn">Choose CSV file</button>
+    </div>
+    <div class="panel">
+      <h2 style="font-size:19px">What the file should look like</h2>
+      <table class="example" aria-label="Example rows">
+        <tr><th>Name</th><th>Day</th><th>Choice 1</th><th>Choice 2</th><th>Choice 3</th><th>Choice 4</th></tr>
+        <tr><td>Maya Kim</td><td>Day 1</td><td>Archery</td><td>Canoeing</td><td>Tide Pools</td><td>Forest</td></tr>
+        <tr><td>Owen Reyes</td><td>Day 2</td><td>Tide Pools</td><td>Archery</td><td>Forest</td><td>Canoeing</td></tr>
+      </table>
+      <p class="small muted" style="margin:0">Column names don't need to match exactly; you can confirm which column is which on the next screen. From Excel or Google Sheets, use File, then Download or Save As, and pick CSV.</p>
+      <p class="note small">Every student does three of the four activities on their day, one per time slot. The app keeps each group at 15 or fewer and gives as many students as possible their top three choices.</p>
+    </div>
+  </div>`;
+  const drop = document.getElementById('drop');
+  const pick = () => document.getElementById('fileInput').click();
+  drop.addEventListener('click', pick);
+  drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('hover'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('hover'); }));
+  drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+}
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (f) readFile(f);
+});
+
+function readFile(file) {
+  if (/\.(xlsx?|numbers|ods)$/i.test(file.name)) { toast('That looks like a spreadsheet file. Save it as CSV first, then choose the CSV.'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const rows = GB.parseCSV(reader.result);
+    if (rows.length < 2) { toast(`${file.name} has fewer than two rows. Check that it is the right file.`); return; }
+    const g = GB.guessMapping(rows[0]);
+    const m = g.mapping;
+    if (m.name < 0 && m.first >= 0) { m.name = m.first; m.first = -1; }
+    Object.assign(state, { rows, fileName: file.name.replace(/\.[^.]+$/, ''), hasHeader: g.hasHeader, mapping: m, view: 'map', model: null, undo: [] });
+    save(); render(); window.scrollTo(0, 0);
+  };
+  reader.onerror = () => toast(`Could not read ${file.name}.`);
+  reader.readAsText(file);
+}
+
+function previewModel() {
+  try { return GB.buildModel(state.rows, state.mapping, state.hasHeader); } catch (e) { return null; }
+}
+
+function renderMap() {
+  const { rows, mapping, hasHeader, settings } = state;
+  const width = Math.max(...rows.slice(0, 50).map(r => r.length));
+  const headers = Array.from({ length: width }, (_, i) => hasHeader ? (rows[0][i] || `Column ${i + 1}`) : `Column ${i + 1}`);
+  const opts = (sel, allowNone) => (allowNone ? `<option value="-1"${sel < 0 ? ' selected' : ''}>(none)</option>` : '') +
+    headers.map((h, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>${esc(h)}</option>`).join('');
+  const role = i => {
+    if (i === mapping.name) return mapping.last >= 0 ? 'First name' : 'Name';
+    if (i === mapping.last) return 'Last name';
+    if (i === mapping.day) return 'Day';
+    const k = mapping.choices.indexOf(i); return k >= 0 ? `Choice ${k + 1}` : '';
+  };
+  const body = (hasHeader ? rows.slice(1) : rows).slice(0, 6);
+  const model = previewModel();
+  const checks = [];
+  let canBuild = mapping.name >= 0 && mapping.choices[0] >= 0;
+  if (!canBuild) checks.push(['bad', 'Pick the name column and at least the Choice 1 column.']);
+  if (model) {
+    const K = model.activities.length, S = settings.slots, cap = settings.cap;
+    checks.push(['', `${model.students.length} students found.`]);
+    const chips = model.activities.map((a, i) => `<span class="chip" style="background:${actColor(i)}">${esc(a)}</span>`).join('');
+    if (K === 4) checks.push(['', `4 activities found: <span class="chips">${chips}</span>`]);
+    else checks.push(['warn', `${K} different activity names found, not 4: <span class="chips">${chips}</span> If two of these are the same activity spelled differently, fix the spelling in the file and upload it again.`]);
+    if (K < S) { checks.push(['bad', `Each student needs ${S} activities, but only ${K} were found.`]); canBuild = false; }
+    model.days.forEach((d, di) => {
+      const n = model.students.filter(s => s.day === di).length;
+      const seats = K * cap;
+      if (n > seats) checks.push(['bad', `${esc(d)}: ${n} students, but each time slot has only ${seats} seats (${K} activities × ${cap}). ${n - seats} students can't be placed in every slot; consider raising the group size.`]);
+      else checks.push(['', `${esc(d)}: ${n} students (up to ${seats} fit per time slot).`]);
+    });
+    const warned = model.students.filter(s => s.warnings.length).length;
+    if (warned) checks.push(['warn', `${warned} student${warned > 1 ? 's have' : ' has'} a blank or repeated choice, or a missing name or day. They're flagged in the results.`]);
+  }
+  app.innerHTML = `
+  <div class="panel">
+    <h2 style="font-size:24px">Check the columns in ${esc(state.fileName)}</h2>
+    <p class="muted" style="margin:6px 0 0">These were matched automatically. Change any that are wrong.</p>
+    <div class="map-grid">
+      <div class="field"><label for="m-name">Student name</label><select id="m-name" data-k="name">${opts(mapping.name, false)}</select></div>
+      <div class="field"><label for="m-last">Last name (optional)</label><select id="m-last" data-k="last">${opts(mapping.last, true)}</select></div>
+      <div class="field"><label for="m-day">Day</label><select id="m-day" data-k="day">${opts(mapping.day, true)}</select></div>
+      ${[0, 1, 2, 3].map(k => `<div class="field"><label for="m-c${k}">Choice ${k + 1}</label><select id="m-c${k}" data-c="${k}">${opts(mapping.choices[k], true)}</select></div>`).join('')}
+    </div>
+    <label class="small"><input type="checkbox" id="hasHeader" ${hasHeader ? 'checked' : ''}> First row contains column names</label>
+    <div class="preview"><table>
+      <tr>${headers.map((h, i) => `<th>${esc(h)}${role(i) ? `<small>${role(i)}</small>` : ''}</th>`).join('')}</tr>
+      ${body.map(r => `<tr>${headers.map((_, i) => `<td>${esc(r[i] ?? '')}</td>`).join('')}</tr>`).join('')}
+    </table></div>
+    <div class="map-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,240px))">
+      <div class="field"><label for="s-slots">Time slots per day</label><input id="s-slots" type="number" min="1" max="8" value="${settings.slots}"></div>
+      <div class="field"><label for="s-cap">Most students per group</label><input id="s-cap" type="number" min="1" max="200" value="${settings.cap}"></div>
+    </div>
+    <ul class="checks">${checks.map(([c, t]) => `<li class="${c}"><span>${t}</span></li>`).join('')}</ul>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn primary" id="buildBtn" ${canBuild ? '' : 'disabled'}>Build groups</button>
+      <button class="btn" id="otherFile">Choose a different file</button>
+    </div>
+  </div>`;
+  app.querySelectorAll('select[data-k]').forEach(s => s.addEventListener('change', () => { mapping[s.dataset.k] = +s.value; save(); renderMap(); }));
+  app.querySelectorAll('select[data-c]').forEach(s => s.addEventListener('change', () => { mapping.choices[+s.dataset.c] = +s.value; save(); renderMap(); }));
+  document.getElementById('hasHeader').addEventListener('change', e => { state.hasHeader = e.target.checked; save(); renderMap(); });
+  const num = (id, key, min, max) => document.getElementById(id).addEventListener('change', e => {
+    const v = Math.round(+e.target.value);
+    settings[key] = Math.min(max, Math.max(min, isFinite(v) ? v : settings[key])); save(); renderMap();
+  });
+  num('s-slots', 'slots', 1, 8); num('s-cap', 'cap', 1, 200);
+  document.getElementById('buildBtn').addEventListener('click', build);
+  document.getElementById('otherFile').addEventListener('click', () => document.getElementById('fileInput').click());
+}
+
+function build() {
+  const model = GB.buildModel(state.rows, state.mapping, state.hasHeader);
+  state.problems = GB.buildGroups(model, state.settings, state.seed);
+  Object.assign(state, { model, undo: [], view: 'board', dayIdx: 0 });
+  save(); render(); window.scrollTo(0, 0);
+}
+
+function rankPip(r) {
+  return r ? `<span class="pip r${Math.min(r, 4)}" aria-label="${GB.ordinal(r)} choice">${r}</span>` : '<span class="pip r0" aria-label="not ranked">–</span>';
+}
+
+function renderBoard() {
+  const { model, settings } = state;
+  const S = settings.slots, cap = settings.cap, K = model.activities.length;
+  if (state.dayIdx >= model.days.length) state.dayIdx = 0;
+  const d = state.dayIdx;
+  const dayStudents = model.students.filter(s => s.day === d).sort((a, b) => a.name.localeCompare(b.name));
+  const evals = new Map(model.students.map(s => [s.id, GB.evaluate(s, S)]));
+  const tally = {}; dayStudents.forEach(s => { const t = evals.get(s.id).tier; tally[t] = (tally[t] || 0) + 1; });
+  const warnCount = model.students.filter(s => s.warnings.length).length;
+
+  const slotsHTML = Array.from({ length: S }, (_, t) => {
+    const lanes = model.activities.map((name, a) => {
+      const members = dayStudents.filter(s => s.schedule[t] === a);
+      const over = members.length > cap;
+      return `<section class="col${over ? ' over-cap' : ''}" data-slot="${t}" data-act="${a}" style="--c:${actColor(a)}" aria-label="${esc(name)}, time slot ${t + 1}">
+        <div class="col-head"><b>${esc(name)}</b><span class="count${over ? ' over' : ''}">${members.length} / ${cap}</span></div>
+        <ul class="cards">${members.map(s => card(s, t, a, evals.get(s.id))).join('') || '<li class="empty-col">No students</li>'}</ul>
+      </section>`;
+    });
+    const unplaced = dayStudents.filter(s => s.schedule[t] < 0);
+    if (unplaced.length) lanes.push(`<section class="col over-cap" data-slot="${t}" data-act="-1" style="--c:var(--over)" aria-label="Not placed, time slot ${t + 1}">
+        <div class="col-head"><b>Not placed</b><span class="count over">${unplaced.length}</span></div>
+        <ul class="cards">${unplaced.map(s => card(s, t, -1, evals.get(s.id))).join('')}</ul></section>`);
+    return `<div class="slot"><h3>Time slot ${t + 1} <small>${dayStudents.filter(s => s.schedule[t] >= 0).length} placed</small></h3><div class="lanes">${lanes.join('')}</div></div>`;
+  }).join('');
+
+  const fq = search.trim().toLowerCase();
+  const tableRows = model.students
+    .filter(s => state.filter === 'all' || (state.filter === 'day' ? s.day === d : evals.get(s.id).tier !== 'excellent' || s.warnings.length))
+    .filter(s => !fq || s.name.toLowerCase().includes(fq))
+    .sort((a, b) => a.day - b.day || a.name.localeCompare(b.name));
+
+  app.innerHTML = `
+  <div class="toolbar">
+    <span class="file-name">${esc(state.fileName)}</span>
+    <button class="btn" id="undoBtn" ${state.undo.length ? '' : 'disabled'}>Undo</button>
+    <button class="btn" id="rebuildBtn">Rebuild groups</button>
+    <button class="btn" id="mapBtn">Check columns</button>
+    <span class="spacer"></span>
+    <span class="group"><span class="small muted">Download</span>
+    <button class="btn" id="csvBtn" title="One row per student">Groups CSV</button>
+    <button class="btn" id="rosterBtn" title="One row per student per group">Rosters CSV</button>
+    <button class="btn primary" id="xlsxBtn" title="Both lists as two sheets">Excel</button></span>
+    <span class="group"><button class="btn quiet" id="printBtn">Print</button>
+    <button class="btn quiet" id="resetBtn">Start over</button></span>
+  </div>
+  ${state.problems.map(p => `<div class="banner"><p>${esc(p)}</p></div>`).join('')}
+  ${warnCount ? `<div class="banner info"><p>${warnCount} student${warnCount > 1 ? 's have' : ' has'} a problem in the file, such as a blank or repeated choice. See the Notes column below.</p></div>` : ''}
+  <div class="tabs" role="tablist">${model.days.map((name, i) => `<button class="tab" role="tab" aria-selected="${i === d}" data-day="${i}">${esc(name)}</button>`).join('')}</div>
+  <div class="daypanel" role="tabpanel">
+    <div class="summary">
+      <strong>${dayStudents.length} students</strong>
+      ${Object.keys(TIERS).filter(t => tally[t]).map(t => `<span class="tally"><span class="dot" style="background:var(--t-${t})"></span>${tally[t]} ${TIERS[t].toLowerCase()}</span>`).join('')}
+      <div class="legend" aria-label="Badge key"><span>Badge shows which choice the activity was:</span>${[1, 2, 3, 4].map(r => `<span>${rankPip(r)} ${GB.ordinal(r)}</span>`).join('')}</div>
+    </div>
+    <p class="small muted" style="margin:-6px 0 14px">Drag a name to another activity in the same time slot, or tap it for a list. On a touchscreen, press and hold a name to drag it. If the student already has that activity in another slot, the two slots swap.</p>
+    <div id="board">${slotsHTML}</div>
+  </div>
+
+  <section class="results" aria-labelledby="resHead">
+    <div class="results-head">
+      <h2 id="resHead">Results</h2>
+      <input type="search" id="search" placeholder="Find a student" value="${esc(search)}" aria-label="Find a student">
+      <select id="filter" aria-label="Show">
+        <option value="all"${state.filter === 'all' ? ' selected' : ''}>All students</option>
+        <option value="day"${state.filter === 'day' ? ' selected' : ''}>${esc(model.days[d])} only</option>
+        <option value="attention"${state.filter === 'attention' ? ' selected' : ''}>Didn't get top choices or flagged</option>
+      </select>
+    </div>
+    <div class="table-wrap"><table class="res">
+      <thead><tr><th>Student</th><th>Day</th>${Array.from({ length: S }, (_, t) => `<th>Slot ${t + 1}</th>`).join('')}<th>Choices received</th><th>Result</th><th>Notes</th></tr></thead>
+      <tbody>${tableRows.map(s => {
+        const ev = evals.get(s.id);
+        return `<tr><td>${esc(s.name)}</td><td class="nowrap">${esc(model.days[s.day])}</td>
+          ${s.schedule.map(a => `<td class="nowrap">${a >= 0 ? esc(model.activities[a]) + ' ' + `<span class="muted small">(${s.rank[a] ? GB.ordinal(s.rank[a]) : 'unranked'})</span>` : '<span class="muted">Not placed</span>'}</td>`).join('')}
+          <td class="nowrap">${esc(ev.received)}</td>
+          <td><span class="tier"><span class="dot" style="background:var(--t-${ev.tier})"></span>${esc(ev.label)}</span></td>
+          <td class="notes">${esc(s.warnings.join('; '))}</td></tr>`;
+      }).join('') || `<tr><td colspan="${S + 5}" class="muted">No students match.</td></tr>`}</tbody>
+    </table></div>
+    <p class="small muted">Excellent means the student got their top ${S} choices. Good, Fair and Poor mean they missed their ${GB.ordinal(S)}, 2nd or 1st choice.</p>
+  </section>`;
+
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { state.dayIdx = +b.dataset.day; save(); renderBoard(); }));
+  document.querySelector('.tabs').addEventListener('keydown', e => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const n = model.days.length; state.dayIdx = (state.dayIdx + (e.key === 'ArrowRight' ? 1 : n - 1)) % n;
+    save(); renderBoard(); document.querySelector(`.tab[data-day="${state.dayIdx}"]`).focus();
+  });
+  document.getElementById('undoBtn').addEventListener('click', undo);
+  document.getElementById('rebuildBtn').addEventListener('click', () => {
+    if (state.undo.length && !confirm('Rebuilding replaces the changes you made by hand. Continue?')) return;
+    state.seed++; build(); toast('Groups rebuilt. The result may differ from before but is just as good overall.');
+  });
+  document.getElementById('mapBtn').addEventListener('click', () => {
+    if (state.undo.length && !confirm('Going back to the columns will discard the changes you made by hand when you build again. Continue?')) return;
+    state.view = 'map'; save(); render();
+  });
+  document.getElementById('csvBtn').addEventListener('click', () => download(GB.toCSV(GB.exportRows(model, settings)), `${state.fileName}-groups.csv`, 'text/csv;charset=utf-8'));
+  document.getElementById('rosterBtn').addEventListener('click', () => download(GB.toCSV(GB.rosterRows(model, settings)), `${state.fileName}-rosters.csv`, 'text/csv;charset=utf-8'));
+  document.getElementById('xlsxBtn').addEventListener('click', () => download(GB.toXLSX([
+    { name: 'Students', rows: GB.exportRows(model, settings) }, { name: 'Rosters', rows: GB.rosterRows(model, settings) }]),
+    `${state.fileName}-groups.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'));
+  document.getElementById('printBtn').addEventListener('click', () => window.print());
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    if (!confirm('Start over? This removes the class list and groups from this device. Download first if you want to keep them.')) return;
+    try { localStorage.removeItem(STORE); } catch (e) {}
+    state = fresh(); search = ''; render();
+  });
+  const sIn = document.getElementById('search');
+  sIn.addEventListener('input', () => { search = sIn.value; const pos = sIn.selectionStart; renderBoard(); const n = document.getElementById('search'); n.focus(); n.setSelectionRange(pos, pos); });
+  document.getElementById('filter').addEventListener('change', e => { state.filter = e.target.value; save(); renderBoard(); });
+  wireBoard();
+}
+
+function card(s, t, a, ev) {
+  const flag = s.warnings.length ? '<span class="flag" title="Problem in file"></span>' : '';
+  return `<li><button type="button" class="card" data-sid="${s.id}" data-slot="${t}" title="${esc(s.name)}: ${esc(ev.label)}">${a >= 0 ? rankPip(s.rank[a]) : ''}<span class="nm">${esc(s.name)}</span>${flag}</button></li>`;
+}
+
+function download(data, name, type) {
+  const blob = new Blob([data], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name.replace(/[\\/:*?"<>|]+/g, '-');
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toast(`Downloaded ${a.download}`);
+}
+
+// ---------- moving students ----------
+const findStudent = id => state.model.students.find(s => s.id === id);
+
+function doMove(sid, slot, act) {
+  const s = findStudent(sid);
+  if (!s || act < 0) return;
+  const prev = s.schedule.slice();
+  if (!GB.moveStudent(s, slot, act)) return;
+  state.undo.push({ sid, prev }); if (state.undo.length > 300) state.undo.shift();
+  save(); renderBoard();
+  const swapped = prev.indexOf(act);
+  if (swapped >= 0 && swapped !== slot) toast(`${s.name} already had ${state.model.activities[act]} in slot ${swapped + 1}, so slots ${slot + 1} and ${swapped + 1} were swapped.`);
+  const btn = document.querySelector(`.card[data-sid="${sid}"][data-slot="${slot}"]`);
+  if (btn) btn.focus({ preventScroll: true });
+}
+
+function undo() {
+  const u = state.undo.pop(); if (!u) return;
+  const s = findStudent(u.sid); if (s) s.schedule = u.prev;
+  save(); renderBoard(); toast(`Undid the move for ${s ? s.name : 'a student'}.`);
+}
+
+const dlg = document.getElementById('moveDlg');
+document.getElementById('moveClose').addEventListener('click', () => dlg.close());
+dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+
+function openMoveDialog(sid, slot) {
+  const s = findStudent(sid); const { model, settings } = state;
+  const counts = model.activities.map((_, a) => model.students.filter(x => x.day === s.day && x.schedule[slot] === a).length);
+  document.getElementById('moveTitle').textContent = `Move ${s.name}`;
+  document.getElementById('moveSub').textContent = `${model.days[s.day]}, time slot ${slot + 1}`;
+  document.getElementById('moveList').innerHTML = model.activities.map((name, a) => {
+    const cur = s.schedule[slot] === a;
+    const other = s.schedule.indexOf(a);
+    const bits = [s.rank[a] ? `${GB.ordinal(s.rank[a])} choice` : 'not ranked', `${counts[a]} / ${settings.cap} in this slot`];
+    if (!cur && other >= 0) bits.push(`swaps with slot ${other + 1}`);
+    return `<button type="button" data-act="${a}" style="--c:${actColor(a)}" ${cur ? 'disabled aria-current="true"' : ''}>
+      <span><b>${esc(name)}</b><small>${bits.join(', ')}</small></span>${cur ? '<small>Current</small>' : ''}</button>`;
+  }).join('');
+  document.getElementById('moveList').querySelectorAll('button[data-act]').forEach(b => b.addEventListener('click', () => { dlg.close(); doMove(sid, slot, +b.dataset.act); }));
+  dlg.showModal();
+}
+
+// ---------- drag and drop (pointer events, works with mouse, pen and touch) ----------
+let drag = null, suppressClick = false;
+
+function wireBoard() {
+  const board = document.getElementById('board');
+  board.addEventListener('click', e => {
+    const c = e.target.closest('.card'); if (!c) return;
+    if (suppressClick) { suppressClick = false; return; }
+    openMoveDialog(c.dataset.sid, +c.dataset.slot);
+  });
+  board.addEventListener('pointerover', e => {
+    if (drag || e.pointerType !== 'mouse') return;
+    const c = e.target.closest('.card');
+    board.querySelectorAll('.card.peer').forEach(x => x.classList.remove('peer'));
+    if (c) board.querySelectorAll(`.card[data-sid="${c.dataset.sid}"]`).forEach(x => { if (x !== c) x.classList.add('peer'); });
+  });
+  board.addEventListener('pointerleave', () => board.querySelectorAll('.card.peer').forEach(x => x.classList.remove('peer')));
+  board.addEventListener('pointerdown', e => {
+    const c = e.target.closest('.card');
+    if (!c || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    drag = { card: c, sid: c.dataset.sid, slot: +c.dataset.slot, x: e.clientX, y: e.clientY, id: e.pointerId, type: e.pointerType, active: false, timer: 0, ghost: null, over: null };
+    if (e.pointerType === 'touch') drag.timer = setTimeout(() => startDrag(drag.x, drag.y), 300);
+  });
+  board.addEventListener('contextmenu', e => { if (e.target.closest('.card')) e.preventDefault(); });
+}
+
+function startDrag(x, y) {
+  if (!drag || drag.active) return;
+  drag.active = true; suppressClick = true;
+  if (navigator.vibrate) navigator.vibrate(8);
+  const r = drag.card.getBoundingClientRect();
+  const g = drag.card.cloneNode(true);
+  g.classList.add('ghost'); g.style.width = r.width + 'px'; g.style.left = r.left + 'px'; g.style.top = r.top + 'px';
+  drag.dx = x - r.left; drag.dy = y - r.top;
+  document.body.appendChild(g); drag.ghost = g;
+  drag.card.classList.add('lifted');
+  document.getElementById('board').classList.add('is-dragging');
+  document.querySelectorAll(`#board .col[data-slot="${drag.slot}"]`).forEach(c => { if (c.dataset.act !== '-1') c.classList.add('valid'); });
+}
+
+window.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dist = Math.hypot(e.clientX - drag.x, e.clientY - drag.y);
+  if (!drag.active) {
+    if (drag.type === 'touch') { if (dist > 10) { clearTimeout(drag.timer); drag = null; } return; }
+    if (dist < 6) return;
+    startDrag(drag.x, drag.y);
+  }
+  drag.ghost.style.left = (e.clientX - drag.dx) + 'px';
+  drag.ghost.style.top = (e.clientY - drag.dy) + 'px';
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const col = el && el.closest('.col.valid');
+  if (drag.over && drag.over !== col) drag.over.classList.remove('drop-over');
+  if (col) col.classList.add('drop-over');
+  drag.over = col;
+  // auto-scroll near edges
+  const edge = 48;
+  if (e.clientY < edge) window.scrollBy(0, -14); else if (e.clientY > innerHeight - edge) window.scrollBy(0, 14);
+  const lanes = el && el.closest('.lanes');
+  if (lanes) { const lr = lanes.getBoundingClientRect(); if (e.clientX < lr.left + edge) lanes.scrollLeft -= 14; else if (e.clientX > lr.right - edge) lanes.scrollLeft += 14; }
+});
+
+// Keep the page from scrolling while a touch drag is in progress.
+document.addEventListener('touchmove', e => { if (drag && drag.active) e.preventDefault(); }, { passive: false });
+
+function endDrag(commit) {
+  if (!drag) return;
+  clearTimeout(drag.timer);
+  const d = drag; drag = null;
+  if (!d.active) return;
+  d.ghost.remove();
+  d.card.classList.remove('lifted');
+  const board = document.getElementById('board');
+  if (board) { board.classList.remove('is-dragging'); board.querySelectorAll('.valid, .drop-over').forEach(c => c.classList.remove('valid', 'drop-over')); }
+  if (commit && d.over) doMove(d.sid, d.slot, +d.over.dataset.act);
+  // a click event follows pointerup for mouse; let it be swallowed, then reset
+  setTimeout(() => { suppressClick = false; }, 50);
+}
+window.addEventListener('pointerup', e => { if (drag && e.pointerId === drag.id) endDrag(true); });
+window.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) endDrag(false); });
+window.addEventListener('keydown', e => { if (e.key === 'Escape' && drag) endDrag(false); });
+
+// ---------- PWA ----------
+let deferredInstall = null;
+const installBtn = document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; installBtn.style.display = 'inline-flex'; });
+installBtn.addEventListener('click', async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt(); await deferredInstall.userChoice.catch(() => {});
+  deferredInstall = null; installBtn.style.display = 'none';
+});
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+
+render();
+})();
+</script>
+</body>
+</html>
